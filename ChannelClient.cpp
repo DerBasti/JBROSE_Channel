@@ -4,7 +4,7 @@
 #include "ChannelServer.h"
 #include <iostream>
 
-ChannelClient::ChannelClient(ROSEClient* roseClient) {
+ChannelClient::ChannelClient(std::shared_ptr<ROSEClient>& roseClient) {
 	connectionWrapper = roseClient;
 }
 
@@ -23,11 +23,12 @@ bool ChannelClient::handleIdentification(const Packet* packet) {
 }
 
 bool ChannelClient::handleGetCharacterList(const Packet* packet) {
-	Database* database = ROSEServer::getDatabase();
+	ChannelServer* server = ChannelServer::getInstance();
+	Database* database = server->getDatabase();
 	char query[0x150] = { 0x00 };
 	sprintf_s(query, "SELECT * FROM players WHERE account_id=%i", accountId);
 	auto result = database->selectQuery(query);
-	CharacterListResponsePacket packetToSend(0);
+	CharacterListResponsePacket packetToSend;
 	if (result) {
 		uint32_t amount = result->getResultAmount();
 		packetToSend.setCharacterAmount(static_cast<uint8_t>(amount));
@@ -44,7 +45,7 @@ bool ChannelClient::handleGetCharacterList(const Packet* packet) {
 void ChannelClient::setItemsForCharacter(ChannelServerCharacter& character) {
 	char query[0x150] = { 0x00 };
 	sprintf_s(query, "SELECT slot, item_id, refinement FROM items WHERE player_id=%i", character.getId());
-	Database* database = ROSEServer::getDatabase();
+	Database* database = ChannelServer::getInstance()->getDatabase();
 	auto result = database->selectQuery(query);
 	if (result) {
 		uint32_t amount = result->getResultAmount();
@@ -60,12 +61,12 @@ bool ChannelClient::handleCharacterCreation(const Packet* packet) {
 	const CharacterCreationRequestPacket* requestPacket = dynamic_cast<const CharacterCreationRequestPacket*>(packet);
 	char query[0x150] = { 0x00 };
 	sprintf_s(query, "SELECT id FROM players WHERE player_name='%s'", requestPacket->getName().c_str());
-	auto result = ROSEServer::getDatabase()->selectQuery(query);
-	if (result) {
+	auto result = ChannelServer::getInstance()->getDatabase()->selectQuery(query);
+	if (result->hasResult()) {
 		CharacterCreationResponsePacket response(CharacterCreationResponsePacket::CreationResult::CHARACTER_NAME_EXISTS);
 		return getConnectionWrapper()->sendData(response);
 	}
-	bool success = ChannelServer::createNewCharacter(this, requestPacket);
+	bool success = ChannelServer::getInstance()->createNewCharacter(this, requestPacket);
 	CharacterCreationResponsePacket response(success == true ? CharacterCreationResponsePacket::CreationResult::CREATION_OKAY : CharacterCreationResponsePacket::CreationResult::CREATION_FAILED);
 	return getConnectionWrapper()->sendData(response);
 }
@@ -76,14 +77,14 @@ bool ChannelClient::handleWorldServerIpRequest(const Packet* packet) {
 
 	const ChannelServerCharacter& character = getCharacterFromName(selectedCharacterName);
 	if (!character.isValid()) {
-		std::cout << "Character '" << selectedCharacterName.c_str() << "' not found!\n";
+		logger.logError("Character '", selectedCharacterName.c_str(), "' not found!");
 		return false;
 	}
 	//			Datenbank updaten mit ID
 	//			WorldServer-Packet senden
 
-	if (!ChannelServer::setSelectedCharacter(this->getAccountId(), character.getId())) {
-		std::cout << "Character '" << selectedCharacterName.c_str() << "' couldn't be assigned as last logged-in!\n";
+	if (!ChannelServer::getInstance()->setSelectedCharacter(this->getAccountId(), character.getId())) {
+		logger.logError("Character '", selectedCharacterName.c_str(), "' couldn't be assigned as last logged-in!");
 		return false;
 	}
 
@@ -94,6 +95,7 @@ bool ChannelClient::handleWorldServerIpRequest(const Packet* packet) {
 	response.setEncryptionKey(CryptTable::DEFAULT_CRYPTTABLE_START_VALUE);
 	
 	FriendListResponsePacket friendResponse;
+	friendResponse.setFriendlistResponseType(FriendListResponseType::SEND_FRIENDLIST);
 	friendResponse.setAmountOfFriends(0);
 
 	return getConnectionWrapper()->sendData(response) && getConnectionWrapper()->sendData(friendResponse);
@@ -125,7 +127,7 @@ bool ChannelClient::handlePacket(const Packet* packet) {
 			success = handleWorldServerIpRequest(packet);
 		break;
 		default:
-			std::cout << "Unknown packet: " << packet->toPrintable().c_str() << "\n";
+			logger.logWarn("Unknown packet: ", packet->toPrintable().c_str());
 	}
 	return success;
 }

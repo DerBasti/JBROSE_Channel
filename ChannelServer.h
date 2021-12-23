@@ -9,20 +9,24 @@
 
 class ChannelServer : public ROSEServer {
 private:
-	std::unordered_map<ROSEClient*, ChannelClient*> clientList;
-	ChannelClient* findChannelClientByInterface(ROSEClient* roseClient);
+	std::unordered_map<std::shared_ptr<ROSEClient>, ChannelClient*> clientList;
+	ChannelClient* findChannelClientByInterface(std::shared_ptr<ROSEClient>& roseClient);
 
-	static bool addBasicItemsForNewCharacter(int32_t playerId, uint32_t sex);
+	bool addBasicItemsForNewCharacter(int32_t playerId, uint32_t sex);
 public:
 	ChannelServer(uint16_t port);
 	virtual ~ChannelServer();
 
 	virtual void loadEncryption();
 
-	virtual void onNewROSEClient(ROSEClient* roseClient);
-	virtual bool onPacketsReady(ROSEClient* client, std::queue<std::shared_ptr<Packet>>& packetQueue);
-	virtual void onROSEClientDisconnecting(ROSEClient* client);
+	virtual void onNewROSEClient(std::shared_ptr<ROSEClient>& roseClient);
+	virtual bool onPacketsReady(std::shared_ptr<ROSEClient>& client, std::queue<std::shared_ptr<Packet>>& packetQueue);
+	virtual void onROSEClientDisconnecting(std::shared_ptr<ROSEClient>& client);
 
-	static bool createNewCharacter(ChannelClient *client, const Packet *requestPacket);
-	static bool setSelectedCharacter(uint32_t accountId, uint32_t playerId);
+	bool createNewCharacter(ChannelClient *client, const Packet *requestPacket);
+	bool setSelectedCharacter(uint32_t accountId, uint32_t playerId);
+
+	__inline static ChannelServer* getInstance() {
+		return ROSEServer::getInstance<ChannelServer>();
+	}
 };

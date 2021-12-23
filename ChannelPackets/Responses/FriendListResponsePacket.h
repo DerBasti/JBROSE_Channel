@@ -5,22 +5,31 @@
 
 #include "..\..\..\JBROSE_Common\Packet.h"
 
+enum class FriendListResponseType : uint8_t {
+	SEND_FRIENDLIST = 6
+};
+
 class FriendListResponsePacket : public ResponsePacket {
 private:
-	uint8_t type;
+	FriendListResponseType type;
 	uint8_t amountOfFriends;
 	//FRIENDS
 protected:
 	virtual void appendContentToSendable(SendablePacket& sendable) const {
-		sendable.addData(type);
+		sendable.addData(static_cast<uint8_t>(type));
 		sendable.addData(amountOfFriends);
 		//ACTUAL FRIENDS
 	}
 public:
 	const static uint16_t ID = 0x7E5;
 
+
 	FriendListResponsePacket() : ResponsePacket(ID) {
 
+	}
+
+	__inline void setFriendlistResponseType(const FriendListResponseType type) {
+		this->type = type;
 	}
 
 	__inline void setAmountOfFriends(const uint8_t friendsAmount) {

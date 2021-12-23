@@ -4,8 +4,9 @@
 
 class ChannelClient {
 private:
-	ROSEClient* connectionWrapper;
+	std::shared_ptr<ROSEClient> connectionWrapper;
 	uint32_t accountId;
+	ROSELogger logger;
 	ChannelServerCharacter characters[5];
 
 	ChannelServerCharacter getCharacterFromName(const std::string& name) const;
@@ -15,12 +16,12 @@ private:
 	bool handleCharacterCreation(const Packet* packet);
 	bool handleWorldServerIpRequest(const Packet* packet);
 
-	__inline ROSEClient* getConnectionWrapper() const {
+	__inline std::shared_ptr<ROSEClient> getConnectionWrapper() const {
 		return connectionWrapper;
 	}
 	void setItemsForCharacter(ChannelServerCharacter& character);
 public:
-	ChannelClient(ROSEClient* roseClient);
+	ChannelClient(std::shared_ptr<ROSEClient>& roseClient);
 	virtual ~ChannelClient();
 
 	bool handlePacket(const Packet* packet);
