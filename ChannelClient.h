@@ -6,7 +6,7 @@ class ChannelClient {
 private:
 	std::shared_ptr<ROSEClient> connectionWrapper;
 	uint32_t accountId;
-	ROSELogger logger;
+	ROSEThreadedLogger logger;
 	ChannelServerCharacter characters[5];
 
 	ChannelServerCharacter getCharacterFromName(const std::string& name) const;
