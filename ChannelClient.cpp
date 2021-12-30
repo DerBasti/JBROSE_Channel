@@ -6,10 +6,12 @@
 
 ChannelClient::ChannelClient(std::shared_ptr<ROSEClient>& roseClient) {
 	connectionWrapper = roseClient;
+	for (uint8_t i = 0; i < 5; i++) {
+		this->characters[i] = ChannelServerCharacter();
+	}
 }
 
 ChannelClient::~ChannelClient() {
-	connectionWrapper = nullptr;
 }
 
 bool ChannelClient::handleIdentification(const Packet* packet) {
@@ -44,7 +46,7 @@ bool ChannelClient::handleGetCharacterList(const Packet* packet) {
 
 void ChannelClient::setItemsForCharacter(ChannelServerCharacter& character) {
 	char query[0x150] = { 0x00 };
-	sprintf_s(query, "SELECT slot, item_id, refinement FROM items WHERE player_id=%i", character.getId());
+	sprintf_s(query, "SELECT slot, item_id, refinement FROM items WHERE player_id=%i AND slot<=8", character.getId());
 	Database* database = ChannelServer::getInstance()->getDatabase();
 	auto result = database->selectQuery(query);
 	if (result) {
@@ -104,7 +106,7 @@ bool ChannelClient::handleWorldServerIpRequest(const Packet* packet) {
 ChannelServerCharacter ChannelClient::getCharacterFromName(const std::string& name) const {
 	for (uint8_t i = 0; i < 5; i++) {
 		const ChannelServerCharacter& character = characters[i];
-		if (_stricmp(character.getName().c_str(), name.c_str()) == 0) {
+		if (_stricmp(character.getName(), name.c_str()) == 0) {
 			return character;
 		}
 	}

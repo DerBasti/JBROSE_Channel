@@ -9,7 +9,7 @@
 class CharacterListResponsePacket : public ResponsePacket {
 private:
 	uint8_t amount;
-	std::shared_ptr<ChannelServerCharacter> characters;
+	ChannelServerCharacter characters[5];
 public:
 	const static uint16_t ID = 0x712;
 	CharacterListResponsePacket() : CharacterListResponsePacket(0) {}
@@ -18,22 +18,17 @@ public:
 
 	__inline void setCharacterAmount(const uint8_t amount) {
 		this->amount = amount;
-		characters = std::shared_ptr<ChannelServerCharacter>(new ChannelServerCharacter[amount+1], std::default_delete<ChannelServerCharacter[]>());
 	}
 
 	__inline void addCharacter(const ChannelServerCharacter& character, uint8_t idx) {
-		characters.get()[idx] = character;
+		characters[idx] = character;
 	}
 
 	void appendContentToSendable(SendablePacket& sendable) const {
 		sendable.addData(amount);
 		for (uint16_t idx = 0; idx < amount; idx++) {
-			const ChannelServerCharacter& character = characters.get()[idx];
-			SendablePacket charDataAsPacket = character.toSendable();
-			std::shared_ptr<unsigned char> data = charDataAsPacket.toSendable();
-			for (uint8_t dataIdx = 6; dataIdx < charDataAsPacket.getCurrentSize(); dataIdx++) {
-				sendable.addData(data.get()[dataIdx]);
-			}
+			const ChannelServerCharacter& character = characters[idx];
+			character.appendContentToSendable(sendable);
 		}
 	}
 
